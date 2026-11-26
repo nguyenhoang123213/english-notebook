@@ -19,7 +19,7 @@ function load() { try { const j = JSON.parse(localStorage.getItem(KEY)); if (j &
 let S = load();
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Không lưu được: bộ nhớ trình duyệt bị chặn hoặc đầy. Hãy xuất sao lưu.'); } }
 const dayRec = () => (S.day[today()] = S.day[today()] || { new: 0, reviews: 0, sent: 0, shadow: 0, ok: 0, hard: 0, miss: 0, dict: 0, journal: 0 });
-const ui = { view: 'home', tid: 'all', cs: null, ss: null, pv: { pi: 0, ipa: true, vi: true, hide: false }, sh: { pi: 0, li: 0, res: null, rec: false, hide: false }, tok: 0, msg: null, open: {}, pick: new Set(), sfilter: '', ipa: { text: '', acc: 'uk', res: null }, nfilter: '', lk: {}, dc: { src: 'p', pi: 0, aid: '', i: 0, res: null, val: '', hint: 0, done: false }, hidePlaced: false, onlyNew: false, jr: { mood: '', text: '', open: null }, rp: { off: 0 }, nw: { id: null, mode: 'all', open: {}, paste: false } };
+const ui = { view: 'home', tid: 'all', cs: null, ss: null, pv: { pi: 0, ipa: true, vi: true, hide: false }, sh: { pi: 0, li: 0, res: null, rec: false, hide: false }, tok: 0, msg: null, open: {}, pick: new Set(), sfilter: '', ipa: { text: '', acc: 'uk', res: null }, nfilter: '', lk: {}, dc: { src: 'p', pi: 0, aid: '', i: 0, res: null, val: '', hint: 0, done: false }, hlTok: 0, hidePlaced: false, onlyNew: false, jr: { mood: '', text: '', open: null }, rp: { off: 0 }, nw: { id: null, mode: 'all', open: {}, paste: false } };
 const selTopics = tid => tid === 'all' ? S.topics : S.topics.filter(t => t.id === tid);
 
 /* ---------- Tiện ích: so khớp, khoảng cách, diff ---------- */
@@ -388,7 +388,7 @@ VIEWS.sent = () => {
   const k = c.queue[c.i], q = k.q, pct = Math.round(100 * c.i / c.queue.length);
   let res = '';
   if (c.res) {
-    const r = c.res; res = `<div class="res ${r.v}"><b>${r.v === 'yes' ? '✔ Chính xác' : r.v === 'near' ? '≈ Gần đúng' : '✘ Chưa đúng'}</b> · khớp ${Math.round(r.ratio * 100)}%<p style="margin:6px 0">Câu của bạn so với đáp án (từ <span class="miss">xanh</span> là thiếu hoặc sai, <del class="extra">gạch đỏ</del> là thừa):</p><p style="margin:0">${diffHtml(r.ops)}</p>${r.unused.length ? `<p style="margin:8px 0 0">⚠ Bạn chưa dùng: <b>${r.unused.map(esc).join(', ')}</b></p>` : ''}${r.tips && r.tips.length ? `<p style="margin:8px 0 0"><b>Lỗi có thể gặp:</b></p><ul style="margin:4px 0 0 18px">${r.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul><p class="small muted" style="margin:4px 0 0">Gợi ý tự động so với đáp án mẫu, có thể chưa đúng nếu bạn diễn đạt theo cách khác. Muốn chắc chắn thì bấm nút nhờ Claude bên dưới.</p>` : ''}<p style="margin:8px 0 0"><b>Đáp án:</b> ${q.en.map(e => `${esc(e)} ${spk(e)}`).join('<br>')}</p>${rateBar(q)}${whyTense(q)}${q.note ? `<p class="small" style="margin:8px 0 0">💡 ${esc(q.note)}</p>` : ''}${r.v !== 'yes' ? '<p style="margin:10px 0 0"><button class="btn sm" data-act="askClaude">📋 Nhờ Claude chấm chi tiết</button></p>' : ''}</div>`;
+    const r = c.res; res = `<div class="res ${r.v}"><b>${r.v === 'yes' ? '✔ Chính xác' : r.v === 'near' ? '≈ Gần đúng' : '✘ Chưa đúng'}</b> · khớp ${Math.round(r.ratio * 100)}%<p style="margin:6px 0">Câu của bạn so với đáp án (từ <span class="miss">xanh</span> là thiếu hoặc sai, <del class="extra">gạch đỏ</del> là thừa):</p><p style="margin:0">${diffHtml(r.ops)}</p>${r.unused.length ? `<p style="margin:8px 0 0">⚠ Bạn chưa dùng: <b>${r.unused.map(esc).join(', ')}</b></p>` : ''}${r.tips && r.tips.length ? `<p style="margin:8px 0 0"><b>Lỗi có thể gặp:</b></p><ul style="margin:4px 0 0 18px">${r.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul><p class="small muted" style="margin:4px 0 0">Gợi ý tự động so với đáp án mẫu, có thể chưa đúng nếu bạn diễn đạt theo cách khác. Muốn chắc chắn thì bấm nút nhờ Claude bên dưới.</p>` : ''}<p style="margin:8px 0 0"><b>Đáp án:</b> ${q.en.map((e, i) => `<span class="ansen" data-i="${i}">${rwHtml(e)}</span> <button class="ico" data-act="sayHl" data-i="${i}" aria-label="Nghe" title="Nghe và tô từ đang đọc">🔊</button>`).join('<br>')}</p>${rateBar(q)}${whyTense(q)}${q.note ? `<p class="small" style="margin:8px 0 0">💡 ${esc(q.note)}</p>` : ''}${r.v !== 'yes' ? '<p style="margin:10px 0 0"><button class="btn sm" data-act="askClaude">📋 Nhờ Claude chấm chi tiết</button></p>' : ''}</div>`;
   }
   const btns = c.res ? gradeBtns(k.s, c.res.v === 'yes' ? [2, 3] : c.res.v === 'near' ? [1, 2] : [0], c.res.v === 'yes' ? ['Đúng', 'Quá dễ'] : c.res.v === 'near' ? ['Tạm được', 'Coi là đúng'] : ['Tiếp tục']) : '';
   return `<div class="prog"><div class="row"><span class="small muted">${c.i + 1}/${c.queue.length}${k.s.b === 0 ? ' · câu mới' : ''}</span><span class="sp"></span><button class="btn sm" data-act="endSess">Dừng</button></div><div class="bar"><i style="width:${pct}%"></i></div></div>
@@ -769,7 +769,21 @@ document.addEventListener('change', e => { if (e.target.dataset && e.target.data
 
 /* ---------- Giao diện sáng/tối ---------- */
 ACT.resetPlaced = resetPlaced;
-ACT.sayAns = () => { const k = ui.ss && ui.ss.queue[ui.ss.i]; if (k) speak(k.q.en[0], S.settings.rate); };
+const rwHtml = t => String(t).replace(/\S+|\s+/g, (m, off) => /^\s/.test(m) ? m : `<span class="rw" data-s="${off}" data-l="${m.length}">${esc(m)}</span>`);
+function sayHl(text, box) {
+  if (!tts) return speak(text); const my = ++ui.hlTok, rate = S.settings.rate; speechSynthesis.cancel();
+  const spans = box ? [...box.querySelectorAll('.rw')] : [], clear = () => document.querySelectorAll('.rw.hl').forEach(x => x.classList.remove('hl'));
+  const mark = i => { if (my !== ui.hlTok) return; clear(); if (spans[i]) spans[i].classList.add('hl'); }, at = idx => { let j = spans.findIndex(x => +x.dataset.s <= idx && idx < +x.dataset.s + +x.dataset.l); if (j < 0) j = spans.findIndex(x => +x.dataset.s >= idx); return j; };
+  const u = new SpeechSynthesisUtterance(text), v = pickVoice(); u.lang = v ? v.lang : 'en-US'; u.rate = rate; if (v) u.voice = v;
+  let got = false, timers = [];
+  u.onboundary = ev => { if (ev.name && ev.name !== 'word') return; got = true; timers.forEach(clearTimeout); timers = []; mark(at(ev.charIndex)); };
+  const eff = x => +x.dataset.l + 1 + (/[.!?]$/.test(x.textContent) ? 5 : /[,;:]$/.test(x.textContent) ? 3 : 0), total = spans.reduce((a, x) => a + eff(x), 0);
+  let t0 = 0;
+  u.onstart = () => { t0 = performance.now(); mark(0); const per = (S.settings.msChar || 48) / rate; let t = 0; spans.forEach((x, i) => { timers.push(setTimeout(() => mark(i), t)); t += eff(x) * per; }); };
+  const end = ok => { timers.forEach(clearTimeout); if (ok === true && !got && t0 && total) { const el = performance.now() - t0; if (el > 300) S.settings.msChar = Math.round(el / total * rate * 10) / 10; save(); } if (my === ui.hlTok) clear(); }; u.onend = () => end(true); u.onerror = () => end(false); speechSynthesis.speak(u);
+}
+ACT.sayAns = () => { const k = ui.ss && ui.ss.queue[ui.ss.i]; if (k) sayHl(k.q.en[0], $('.ansen[data-i="0"]')); };
+ACT.sayHl = el => { const k = ui.ss && ui.ss.queue[ui.ss.i]; if (k) sayHl(k.q.en[+el.dataset.i], $('.ansen[data-i="' + el.dataset.i + '"]')); };
 document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.chg === 'sayRate') { S.settings.rate = +e.target.value; save(); ACT.sayAns(); } });
 ACT.theme = () => {
   const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), n = cur === 'dark' ? 'light' : 'dark';
