@@ -14,12 +14,12 @@ const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const slug = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'chu-de';
 
 /* ---------- Dữ liệu ---------- */
-const blank = () => ({ topics: [], noted: [], articles: [], artRead: {}, journal: {}, dict: {}, log: {}, day: {}, shadow: {}, settings: { newPerDay: 15, newSent: 8, rate: 0.85, voice: '', goalDays: 5 } });
+const blank = () => ({ topics: [], noted: [], articles: [], artRead: {}, journal: {}, dict: {}, placed: {}, log: {}, day: {}, shadow: {}, settings: { newPerDay: 15, newSent: 8, rate: 0.85, voice: '', goalDays: 5 } });
 function load() { try { const j = JSON.parse(localStorage.getItem(KEY)); if (j && Array.isArray(j.topics)) { const b = blank(); return Object.assign(b, j, { settings: Object.assign(b.settings, j.settings || {}) }); } } catch (e) { } return blank(); }
 let S = load();
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Không lưu được: bộ nhớ trình duyệt bị chặn hoặc đầy. Hãy xuất sao lưu.'); } }
 const dayRec = () => (S.day[today()] = S.day[today()] || { new: 0, reviews: 0, sent: 0, shadow: 0, ok: 0, hard: 0, miss: 0, dict: 0, journal: 0 });
-const ui = { view: 'home', tid: 'all', cs: null, ss: null, pv: { pi: 0, ipa: true, vi: true, hide: false }, sh: { pi: 0, li: 0, res: null, rec: false, hide: false }, tok: 0, msg: null, open: {}, pick: new Set(), sfilter: '', ipa: { text: '', acc: 'uk', res: null }, nfilter: '', lk: {}, dc: { src: 'p', pi: 0, aid: '', i: 0, res: null, val: '', hint: 0, done: false }, jr: { mood: '', text: '', open: null }, rp: { off: 0 }, nw: { id: null, mode: 'all', open: {}, paste: false } };
+const ui = { view: 'home', tid: 'all', cs: null, ss: null, pv: { pi: 0, ipa: true, vi: true, hide: false }, sh: { pi: 0, li: 0, res: null, rec: false, hide: false }, tok: 0, msg: null, open: {}, pick: new Set(), sfilter: '', ipa: { text: '', acc: 'uk', res: null }, nfilter: '', lk: {}, dc: { src: 'p', pi: 0, aid: '', i: 0, res: null, val: '', hint: 0, done: false }, hidePlaced: false, onlyNew: false, jr: { mood: '', text: '', open: null }, rp: { off: 0 }, nw: { id: null, mode: 'all', open: {}, paste: false } };
 const selTopics = tid => tid === 'all' ? S.topics : S.topics.filter(t => t.id === tid);
 
 /* ---------- Tiện ích: so khớp, khoảng cách, diff ---------- */
@@ -217,7 +217,7 @@ VIEWS.home = () => {
   }).join('');
   const voices = tts ? speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a)) : [];
   const set = `<div class="panel"><h2>Cài đặt và sao lưu</h2><div class="row"><label class="small" for="npd">Từ mới mỗi ngày</label><input id="npd" type="number" min="0" max="100" value="${S.settings.newPerDay}" data-chg="npd" style="width:80px"><label class="small" for="nsd">Câu mới mỗi ngày</label><input id="nsd" type="number" min="0" max="100" value="${S.settings.newSent}" data-chg="nsd" style="width:80px"></div>
-    <div class="row" style="margin-top:10px"><label class="small" for="rate">Tốc độ đọc</label><select id="rate" data-chg="rate">${[0.6, 0.75, 0.85, 1].map(v => `<option value="${v}" ${S.settings.rate === v ? 'selected' : ''}>${v}x</option>`).join('')}</select>${voices.length ? `<label class="small" for="voice">Giọng</label><select id="voice" data-chg="voice"><option value="">Tự chọn (ưu tiên giọng tự nhiên nhất)</option>${voices.map(v => `<option value="${esc(v.name)}" ${S.settings.voice === v.name ? 'selected' : ''}>${voiceScore(v) >= 100 ? '★ ' : ''}${esc(v.name)}</option>`).join('')}</select><button class="btn sm" data-act="testVoice">🔊 Nghe thử</button>` : ''}</div>
+    <div class="row" style="margin-top:10px"><label class="small" for="rate">Tốc độ đọc</label><select id="rate" data-chg="rate">${[0.5, 0.6, 0.75, 0.85, 1, 1.15, 1.3].map(v => `<option value="${v}" ${S.settings.rate === v ? 'selected' : ''}>${v}x</option>`).join('')}</select>${voices.length ? `<label class="small" for="voice">Giọng</label><select id="voice" data-chg="voice"><option value="">Tự chọn (ưu tiên giọng tự nhiên nhất)</option>${voices.map(v => `<option value="${esc(v.name)}" ${S.settings.voice === v.name ? 'selected' : ''}>${voiceScore(v) >= 100 ? '★ ' : ''}${esc(v.name)}</option>`).join('')}</select><button class="btn sm" data-act="testVoice">🔊 Nghe thử</button>` : ''}</div>
     <div class="row" style="margin-top:12px"><button class="btn" data-act="export">⬇ Xuất sao lưu</button><label class="btn" style="cursor:pointer">⬆ Nhập sao lưu<input type="file" id="bk" accept=".json" hidden></label><button class="btn bad" data-act="reset">Xoá toàn bộ</button></div><p class="small muted" style="margin-bottom:0">Dữ liệu chỉ nằm trong trình duyệt này. Hãy xuất sao lưu thỉnh thoảng, nhất là trước khi xoá lịch sử duyệt web.</p></div>`;
   return `${msgHtml}${hero(c)}${stats}${S.topics.length ? `<div class="grid g2">${tcs}</div>` : `<div class="panel"><h2>Bắt đầu</h2><p>Chưa có chủ đề nào. Hãy nhập từ vựng bên dưới, hoặc bấm nút này để thử với một gói mẫu.</p><button class="btn go big" data-act="sample">Nạp gói mẫu "Thiết bị mạng"</button></div>`}${imp}${set}`;
 };
@@ -301,10 +301,80 @@ function vary(k, force) {
   return { tp: k.tp, s: k.s, q: v, base, n: pool.length };
 }
 
+/* ---------- Giải thích vì sao dùng thì đó ---------- */
+const TW = {
+  cd0: ['Câu điều kiện loại 0', 'If + hiện tại đơn, hiện tại đơn', 'Nói về sự thật hiển nhiên, quy luật: hễ điều kiện xảy ra thì kết quả luôn xảy ra.', 'if, when, whenever'],
+  cd1: ['Câu điều kiện loại 1', 'If + hiện tại đơn, will + V', 'Điều kiện CÓ THỂ xảy ra ở hiện tại hoặc tương lai. Mệnh đề if dùng hiện tại đơn (không dùng will), mệnh đề chính dùng will.', 'if, unless'],
+  cd2: ['Câu điều kiện loại 2', 'If + quá khứ đơn, would + V', 'Điều kiện KHÔNG có thật hoặc khó xảy ra ở hiện tại (giả sử, tưởng tượng).', 'if I were / if I had…'],
+  cd3: ['Câu điều kiện loại 3', 'If + quá khứ hoàn thành, would have + V3', 'Điều kiện đã KHÔNG xảy ra trong quá khứ, nói về sự tiếc nuối hoặc kết quả đã khác.', 'if … had …, would have …'],
+  hthtt: ['Hiện tại hoàn thành tiếp diễn', 'S + have/has been + V-ing', 'Hành động bắt đầu trong quá khứ, kéo dài đến hiện tại và nhấn mạnh quá trình hoặc sự liên tục.', 'for, since, all day, recently'],
+  qkht: ['Quá khứ hoàn thành', 'S + had + V3/V-ed', 'Hành động xảy ra TRƯỚC một hành động hoặc mốc khác trong quá khứ.', 'before, after, by the time, already'],
+  htht: ['Hiện tại hoàn thành', 'S + have/has + V3/V-ed', 'Hành động đã xảy ra nhưng còn liên quan đến hiện tại (kết quả, kinh nghiệm), hoặc kéo dài đến nay. Không nêu rõ thời điểm quá khứ.', 'already, yet, just, ever, never, since, for, so far'],
+  qktd: ['Quá khứ tiếp diễn', 'S + was/were + V-ing', 'Hành động đang diễn ra tại một thời điểm trong quá khứ, hoặc đang diễn ra thì bị hành động khác xen vào.', 'while, when, at 8 pm yesterday'],
+  httd: ['Hiện tại tiếp diễn', 'S + am/is/are + V-ing', 'Hành động đang xảy ra ngay lúc nói, hoặc kế hoạch chắc chắn sắp tới.', 'now, at the moment, today, these days'],
+  tlg: ['Tương lai gần', 'S + am/is/are going to + V', 'Dự định đã có từ trước hoặc dự đoán dựa trên dấu hiệu ở hiện tại.', 'tomorrow, next week, look at the clouds'],
+  tl: ['Tương lai đơn', 'S + will + V', 'Quyết định tại lúc nói, lời hứa, dự đoán, đề nghị về tương lai.', 'tomorrow, next …, soon, I think'],
+  qk: ['Quá khứ đơn', 'S + V2/V-ed (phủ định: did not + V)', 'Hành động đã xảy ra và kết thúc hoàn toàn trong quá khứ, thường có mốc thời gian rõ ràng.', 'yesterday, last …, … ago, in 2020'],
+  ht: ['Hiện tại đơn', 'S + V(s/es) (phủ định: do/does not + V; to be: am/is/are)', 'Sự thật, trạng thái, thói quen lặp lại. Chủ ngữ ngôi thứ ba số ít (he, she, it) thì động từ thêm s/es.', 'always, usually, often, every day, never'],
+  mdkt: ['Động từ khuyết thiếu', 'S + can/could/should/must/may + V (nguyên mẫu)', 'Diễn tả khả năng, lời khuyên, bắt buộc, sự cho phép. Sau động từ khuyết thiếu luôn là động từ nguyên mẫu, không thêm s hay to.', 'can, should, must, may'],
+  hl: ['Lời khuyên', 'S + should (not) + V', 'Khuyên ai nên hoặc không nên làm gì.', 'should, ought to'],
+  sosanh: ['So sánh', 'adj-er + than / the + adj-est / more + adj + than', 'So sánh hơn dùng than; so sánh nhất dùng the + tính từ ngắn thêm -est, hoặc the most + tính từ dài.', 'than, the most, the -est'],
+  mlenh: ['Câu mệnh lệnh', 'V (nguyên mẫu) / Don\'t + V', 'Ra lệnh, nhắc nhở hoặc hướng dẫn trực tiếp. Không có chủ ngữ, dùng động từ nguyên mẫu.', 'please, don\'t'],
+  tqk: ['Thói quen trong quá khứ', 'S + used to + V', 'Việc từng làm thường xuyên hoặc trạng thái đã có trong quá khứ nhưng nay không còn.', 'used to, when I was young'],
+  ph: ['Phủ định', '', '', ''],
+};
+const TW_PASSIVE = ['Bị động', 'S + be + V3/V-ed (+ by …)', 'Chủ ngữ là đối tượng chịu tác động của hành động, hoặc không cần/không biết ai làm. Thì của câu thể hiện ở động từ "be".', 'by …, was/were + V3'];
+function twDetect(tense, en) {
+  const t = String(tense || '').toLowerCase(), e = ' ' + String(en || '').toLowerCase() + ' ';
+  let pass = /bị động/.test(t), key = null;
+  const has = x => t.includes(x);
+  if (has('điều kiện loại 0')) key = 'cd0'; else if (has('điều kiện loại 1')) key = 'cd1'; else if (has('điều kiện loại 2')) key = 'cd2'; else if (has('điều kiện loại 3')) key = 'cd3';
+  else if (has('hoàn thành tiếp diễn')) key = 'hthtt'; else if (has('quá khứ hoàn thành')) key = 'qkht'; else if (has('hoàn thành')) key = 'htht';
+  else if (has('quá khứ tiếp diễn')) key = 'qktd'; else if (has('hiện tại tiếp diễn') || has('tương lai tiếp diễn')) key = 'httd'; else if (has('tương lai gần')) key = 'tlg'; else if (has('tương lai')) key = 'tl';
+  else if (has('thói quen quá khứ') || has('used to')) key = 'tqk'; else if (has('quá khứ')) key = 'qk'; else if (has('lời khuyên') || has('nên')) key = 'hl';
+  else if (has('khuyết thiếu') || has('khả năng') || has('can') || has('had to')) key = 'mdkt'; else if (has('so sánh')) key = 'sosanh'; else if (has('mệnh lệnh')) key = 'mlenh'; else if (has('hiện tại')) key = 'ht';
+  if (!key && !pass) {
+    if (/ if .*(will|won't)/.test(e) || /^ will| will /.test(e) && / if /.test(e)) key = 'cd1';
+    else if (/ (has|have|hasn't|haven't) (been )?\w+/.test(e) && / (already|yet|just|ever|never|since|for) /.test(e)) key = 'htht';
+    else if (/ (was|were) \w+ing /.test(e)) key = 'qktd'; else if (/ (am|is|are) \w+ing /.test(e)) key = 'httd'; else if (/ (will|won't) /.test(e)) key = 'tl';
+    else if (/ (yesterday|ago|last (week|year|month|night)) /.test(e) || / \w+ed /.test(e)) key = 'qk'; else key = 'ht';
+  }
+  return { key, pass };
+}
+function twMarker(key, pass, en) {
+  const s = String(en); let m;
+  const pick = re => (m = s.match(re)) ? m[0] : '';
+  const out = [];
+  if (pass) { const x = pick(/\b(is|are|was|were|be|been|being|has been|have been|will be|can be|must be)\s+(\w+ly\s+)?\w+(ed|en|t|n)\b/i); if (x) out.push(x); }
+  const by = { htht: /\b(has|have|hasn't|haven't)\s+(not |never |already |just |ever |been )*\w+/i, hthtt: /\b(has|have)\s+been\s+\w+ing/i, qkht: /\bhad\s+(not |already |never )?\w+/i, qktd: /\b(was|were)(n't| not)?\s+\w+ing/i, httd: /\b(am|is|are)(n't| not)?\s+\w+ing/i, tlg: /\b(am|is|are)\s+going to\s+\w+/i, tl: /\b(will|won't|'ll|shall)\s+\w+/i, cd1: /\bif\b[^,]*/i, cd0: /\bif\b[^,]*/i, cd2: /\bif\b[^,]*/i, cd3: /\bif\b[^,]*/i, tqk: /\bused to\s+\w+/i, mdkt: /\b(can't|cannot|can|could|should|shouldn't|must|mustn't|may|might|has to|have to|had to|ought to)\s+\w+/i, hl: /\b(should|shouldn't|ought to)\s+\w+/i, sosanh: /\b(\w+er than|more \w+ than|the \w+est|the most \w+|as \w+ as)\b/i };
+  if (by[key]) { const x = pick(by[key]); if (x && !out.includes(x)) out.push(x); }
+  if (key === 'qk') { const x = pick(/\b(yesterday|last \w+|\w+ ago|in (19|20)\d\d|did not \w+|didn't \w+|\w+ed)\b/i); if (x) out.push(x); }
+  if (key === 'ht') { const x = pick(/\b(always|usually|often|sometimes|never|every \w+|each \w+|\w+s)\b/i); if (x && !/^(is|was|has|his|this|us|as|yes)$/i.test(x)) out.push(x); }
+  return out;
+}
+const rateBar = q => `<div class="row small" style="margin-top:10px"><button class="btn sm pri" data-act="sayAns">🔊 Nghe cả câu</button><label for="srate" class="muted">Tốc độ</label><select id="srate" data-chg="sayRate" aria-label="Tốc độ đọc">${[0.5, 0.6, 0.75, 0.85, 1, 1.15, 1.3].map(v => `<option value="${v}" ${Math.abs(S.settings.rate - v) < 0.01 ? 'selected' : ''}>${v}x${v === 0.5 ? ' (rất chậm)' : v === 1 ? ' (bình thường)' : ''}</option>`).join('')}</select>${q.en.length > 1 ? '<span class="muted">(đọc đáp án đầu tiên)</span>' : ''}</div>`;
+function whyTense(q) {
+  const en = (q.en && q.en[0]) || '', d = twDetect(q.tense, en); if (!d.key && !d.pass) return '';
+  const rows = []; if (d.pass) rows.push(TW_PASSIVE); if (d.key) rows.push(TW[d.key]);
+  const mk = twMarker(d.key, d.pass, en);
+  return `<div class="why"><b>💡 Vì sao dùng ${rows.map(r => esc(r[0])).join(' + ')}?</b>${rows.map(r => `<p style="margin:6px 0 0"><span class="chip t">${esc(r[0])}</span> <code>${esc(r[1])}</code><br>${esc(r[2])}${r[3] ? `<br><span class="small muted">Dấu hiệu thường gặp: ${esc(r[3])}</span>` : ''}</p>`).join('')}${mk.length ? `<p style="margin:8px 0 0">👉 <b>Trong câu này:</b> ${mk.map(x => `<mark>${esc(x)}</mark>`).join(' ')}</p>` : ''}</div>`;
+}
+
 /* ---------- Phần 3: Đặt câu ---------- */
+const isPlaced = (tid, w) => !!(S.placed && S.placed[tid + '|' + w.toLowerCase()]);
+function placedList() {
+  const rows = selTopics(ui.tid).filter(senTopics).map(tp => { const set = new Set(); tp.sentences.forEach(q => (q.uses || []).forEach(u => set.add(u.toLowerCase()))); const ws = tp.words.filter(w => set.has(w.w.toLowerCase())); return { tp, ws, done: ws.filter(w => isPlaced(tp.id, w.w)).length }; });
+  const tot = rows.reduce((a, r) => a + r.ws.length, 0), dn = rows.reduce((a, r) => a + r.done, 0); if (!tot) return '';
+  const many = rows.length > 1;
+  return `<div class="panel"><div class="row"><h2 style="margin:0">Từ đã đặt câu</h2><span class="sp"></span><label class="small"><input type="checkbox" data-chg="hidePl" ${ui.hidePlaced ? 'checked' : ''}> Ẩn từ đã đặt</label><label class="small"><input type="checkbox" data-chg="onlyNew" ${ui.onlyNew ? 'checked' : ''}> Chỉ luyện từ chưa đặt</label><button class="btn sm bad" data-act="resetPlaced">↻ Reset danh sách đã đặt</button></div>
+  <div class="bar" style="margin:10px 0 4px"><i style="width:${Math.round(100 * dn / tot)}%"></i></div><p class="small muted" style="margin:0 0 6px"><b>${dn}/${tot}</b> từ đã đặt câu đúng hoặc gần đúng ít nhất một lần, còn <b>${tot - dn}</b> từ chưa đặt.${dn === tot ? ' 🎉 Bạn đã đặt hết! Bấm “Reset” để bắt đầu vòng mới (tiến độ ôn thưa dần vẫn được giữ).' : ''}</p>
+  ${rows.map(r => `${many ? `<p class="small" style="margin:10px 0 2px"><b>${esc(r.tp.name)}</b> · ${r.done}/${r.ws.length}</p>` : ''}<div>${r.ws.filter(w => !ui.hidePlaced || !isPlaced(r.tp.id, w.w)).map(w => isPlaced(r.tp.id, w.w) ? `<span class="chip t" title="Đã đặt câu">✔ ${esc(w.w)}</span>` : `<span class="chip" style="background:var(--surface2);color:var(--muted);border:1px dashed var(--line)" title="Chưa đặt câu">○ ${esc(w.w)}</span>`).join('') || '<span class="muted small">Đã đặt hết, không còn từ nào để hiện.</span>'}</div>`).join('')}</div>`;
+}
+const resetPlaced = () => { if (!confirm('Reset trạng thái "đã đặt" của các từ đang chọn? Tiến độ ôn thưa dần (SRS) vẫn được giữ.')) return; selTopics(ui.tid).forEach(tp => Object.keys(S.placed || {}).forEach(k => { if (k.startsWith(tp.id + '|')) delete S.placed[k]; })); save(); render(); toast('Đã reset danh sách từ đã đặt.'); };
+document.addEventListener('change', e => { const k = e.target.dataset && e.target.dataset.chg; if (k === 'hidePl') { ui.hidePlaced = e.target.checked; render(); } else if (k === 'onlyNew') { ui.onlyNew = e.target.checked; render(); } });
 const senTopics = t => t.sentences.length > 0;
 function startSent(tid, extra) {
-  ui.tid = tid || ui.tid; const q = sentQueue(ui.tid, extra || 0), queue = [...q.due, ...q.fresh].map(k => vary(k));
+  ui.tid = tid || ui.tid; const q = sentQueue(ui.tid, extra || 0), queue = [...q.due, ...q.fresh].filter(k => !ui.onlyNew || (k.q.uses || []).some(u => !isPlaced(k.tp.id, u))).map(k => vary(k));
   ui.ss = { queue, i: 0, res: null, n: 0, again: 0, fresh: q.fresh.length, done: !queue.length, empty: !queue.length }; ui.view = 'sent'; render();
 }
 VIEWS.sent = () => {
@@ -312,13 +382,13 @@ VIEWS.sent = () => {
   const c = ui.ss;
   if (!c || c.empty) {
     const q = sentQueue(ui.tid), nd = q.due.length, nf = q.fresh.length;
-    return `<h1>Đặt câu</h1><p class="muted" style="margin-top:0">Đọc câu tiếng Việt, tự viết lại bằng tiếng Anh, dùng đúng từ vựng được nhắc. Câu viết đúng sẽ lùi lại ôn thưa dần, câu sai quay lại sớm.</p><div class="panel"><div class="row">${topicSelect(senTopics)}</div><div class="grid g4" style="margin:14px 0"><div class="stat"><b>${nd}</b><span>câu đến hạn ôn</span></div><div class="stat"><b>${nf}</b><span>câu mới hôm nay</span></div></div>${nd + nf ? `<button class="btn pri big" data-act="startSent" data-tid="${ui.tid}">▶ Bắt đầu (${nd + nf} câu)</button>` : '<p>🎉 Hôm nay bạn đã xong phần này.</p>'}${q.totalNew > nf ? ' <button class="btn big" data-act="moreS">+10 câu mới</button>' : ''}</div><div class="panel">${lkBox('s')}</div>${sentList()}`;
+    return `<h1>Đặt câu</h1><p class="muted" style="margin-top:0">Đọc câu tiếng Việt, tự viết lại bằng tiếng Anh, dùng đúng từ vựng được nhắc. Câu viết đúng sẽ lùi lại ôn thưa dần, câu sai quay lại sớm.</p><div class="panel"><div class="row">${topicSelect(senTopics)}</div><div class="grid g4" style="margin:14px 0"><div class="stat"><b>${nd}</b><span>câu đến hạn ôn</span></div><div class="stat"><b>${nf}</b><span>câu mới hôm nay</span></div></div>${nd + nf ? `<button class="btn pri big" data-act="startSent" data-tid="${ui.tid}">▶ Bắt đầu (${nd + nf} câu)</button>` : '<p>🎉 Hôm nay bạn đã xong phần này.</p>'}${q.totalNew > nf ? ' <button class="btn big" data-act="moreS">+10 câu mới</button>' : ''}</div>${placedList()}<div class="panel">${lkBox('s')}</div>${sentList()}`;
   }
   if (c.done) return summaryHtml('Đặt câu', c, 'startSent');
   const k = c.queue[c.i], q = k.q, pct = Math.round(100 * c.i / c.queue.length);
   let res = '';
   if (c.res) {
-    const r = c.res; res = `<div class="res ${r.v}"><b>${r.v === 'yes' ? '✔ Chính xác' : r.v === 'near' ? '≈ Gần đúng' : '✘ Chưa đúng'}</b> · khớp ${Math.round(r.ratio * 100)}%<p style="margin:6px 0">Câu của bạn so với đáp án (từ <span class="miss">xanh</span> là thiếu hoặc sai, <del class="extra">gạch đỏ</del> là thừa):</p><p style="margin:0">${diffHtml(r.ops)}</p>${r.unused.length ? `<p style="margin:8px 0 0">⚠ Bạn chưa dùng: <b>${r.unused.map(esc).join(', ')}</b></p>` : ''}${r.tips && r.tips.length ? `<p style="margin:8px 0 0"><b>Lỗi có thể gặp:</b></p><ul style="margin:4px 0 0 18px">${r.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul><p class="small muted" style="margin:4px 0 0">Gợi ý tự động so với đáp án mẫu, có thể chưa đúng nếu bạn diễn đạt theo cách khác. Muốn chắc chắn thì bấm nút nhờ Claude bên dưới.</p>` : ''}<p style="margin:8px 0 0"><b>Đáp án:</b> ${q.en.map(e => `${esc(e)} ${spk(e)}`).join('<br>')}</p>${q.note ? `<p class="small" style="margin:8px 0 0">💡 ${esc(q.note)}</p>` : ''}${r.v !== 'yes' ? '<p style="margin:10px 0 0"><button class="btn sm" data-act="askClaude">📋 Nhờ Claude chấm chi tiết</button></p>' : ''}</div>`;
+    const r = c.res; res = `<div class="res ${r.v}"><b>${r.v === 'yes' ? '✔ Chính xác' : r.v === 'near' ? '≈ Gần đúng' : '✘ Chưa đúng'}</b> · khớp ${Math.round(r.ratio * 100)}%<p style="margin:6px 0">Câu của bạn so với đáp án (từ <span class="miss">xanh</span> là thiếu hoặc sai, <del class="extra">gạch đỏ</del> là thừa):</p><p style="margin:0">${diffHtml(r.ops)}</p>${r.unused.length ? `<p style="margin:8px 0 0">⚠ Bạn chưa dùng: <b>${r.unused.map(esc).join(', ')}</b></p>` : ''}${r.tips && r.tips.length ? `<p style="margin:8px 0 0"><b>Lỗi có thể gặp:</b></p><ul style="margin:4px 0 0 18px">${r.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul><p class="small muted" style="margin:4px 0 0">Gợi ý tự động so với đáp án mẫu, có thể chưa đúng nếu bạn diễn đạt theo cách khác. Muốn chắc chắn thì bấm nút nhờ Claude bên dưới.</p>` : ''}<p style="margin:8px 0 0"><b>Đáp án:</b> ${q.en.map(e => `${esc(e)} ${spk(e)}`).join('<br>')}</p>${rateBar(q)}${whyTense(q)}${q.note ? `<p class="small" style="margin:8px 0 0">💡 ${esc(q.note)}</p>` : ''}${r.v !== 'yes' ? '<p style="margin:10px 0 0"><button class="btn sm" data-act="askClaude">📋 Nhờ Claude chấm chi tiết</button></p>' : ''}</div>`;
   }
   const btns = c.res ? gradeBtns(k.s, c.res.v === 'yes' ? [2, 3] : c.res.v === 'near' ? [1, 2] : [0], c.res.v === 'yes' ? ['Đúng', 'Quá dễ'] : c.res.v === 'near' ? ['Tạm được', 'Coi là đúng'] : ['Tiếp tục']) : '';
   return `<div class="prog"><div class="row"><span class="small muted">${c.i + 1}/${c.queue.length}${k.s.b === 0 ? ' · câu mới' : ''}</span><span class="sp"></span><button class="btn sm" data-act="endSess">Dừng</button></div><div class="bar"><i style="width:${pct}%"></i></div></div>
@@ -482,7 +552,7 @@ VIEWS.noted = () => {
 /* ---------- Sự kiện ---------- */
 const wordLookup = (tid, lw) => { const tp = S.topics.find(t => t.id === tid); return tp && tp.words.find(w => w.w.toLowerCase() === lw); };
 function advance(c, g, kind) {
-  const k = c.queue[c.i]; applyGrade(k.s, g, kind); c.n++; if (g === 0) { c.again++; c.queue.splice(Math.min(c.queue.length, c.i + 4), 0, Object.assign({}, k, { s: k.s })); }
+  const k = c.queue[c.i]; applyGrade(k.s, g, kind); if (kind === 'sent' && g >= 1) { S.placed = S.placed || {}; (k.q.uses || []).forEach(u => { S.placed[k.tp.id + '|' + u.toLowerCase()] = today(); }); save(); } c.n++; if (g === 0) { c.again++; c.queue.splice(Math.min(c.queue.length, c.i + 4), 0, Object.assign({}, k, { s: k.s })); }
   c.i++; c.res = null; c.val = ''; c.flipped = false; if (c.i >= c.queue.length) c.done = true; render();
 }
 function checkTyped() {
@@ -698,6 +768,9 @@ Object.assign(ACT, {
 document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.chg === 'amode') { ui.nw.mode = e.target.value; render(); } });
 
 /* ---------- Giao diện sáng/tối ---------- */
+ACT.resetPlaced = resetPlaced;
+ACT.sayAns = () => { const k = ui.ss && ui.ss.queue[ui.ss.i]; if (k) speak(k.q.en[0], S.settings.rate); };
+document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.chg === 'sayRate') { S.settings.rate = +e.target.value; save(); ACT.sayAns(); } });
 ACT.theme = () => {
   const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), n = cur === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', n); try { localStorage.setItem('nguyen.theme', n); } catch (e) { }
